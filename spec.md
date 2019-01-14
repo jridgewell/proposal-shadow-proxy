@@ -316,9 +316,9 @@ When the [[Delete]] internal method of a Proxy exotic object _O_ is called with 
 1. If _booleanResult_ is *false*, return *false*.
 
 1. Let _committedDesc_ be the value associated with the key _P_ in _O_.[[CommittedProperties]].
-1. If _committedDesc_ is *undefined*, return *true*.
-1. If _committedDesc_.[[Configurable]] is *false*, throw a *TypeError* exception.
+1. If _committedDesc_ is not *undefined* and _committedDesc_.[[Configurable]] is *false*, throw a *TypeError* exception.
 
+1. Delete the key _P_ from _O_.[[CommittedProperties]].
 1. Return *true*.
 
 [[Delete]] for proxy objects enforces the following invariants:
