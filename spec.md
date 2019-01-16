@@ -16,14 +16,12 @@ When the [[GetPrototypeOf]] internal method of a Proxy exotic object _O_ is call
 
 1. Let _extensible_ be ? _O_.[[CommittedIsExtensible]].
 1. If _extensible_ is *true*, then
-   1. Set _O_.[[CommittedGetPrototype]] to _proto_
+   1. Set _O_.[[CommittedPrototype]] to _proto_
    1. Return _proto_.
 
-1. Let _lastProto_ be ? _O_.[[CommittedGetPrototype]].
-1. If _lastProto_ is not *undefined*, then
-   1. If SameValue(_proto_, lastProto_) is *false*, throw a *TypeError* exception.
+1. Let _lastProto_ be ? _O_.[[CommittedPrototype]].
+1. If SameValue(_proto_, lastProto_) is *false*, throw a *TypeError* exception.
 
-1. Set _O_.[[CommittedGetPrototype]] to _proto_
 1. Return _proto_.
 
 
@@ -43,18 +41,16 @@ When the [[SetPrototypeOf]] internal method of a Proxy exotic object _O_ is call
 1. Let _original_ be _O_.[[ProxyOriginal]].
 
 1. Let _trap_ be ? GetMethod(_handler_, `"setPrototypeOf"`).
-1. If _booleanResult_ is *undefined*, then
-   1. Let _result_ be ? _original_.[[SetPrototypeOf]](_V_).
+1. If _trap_ is *undefined*, then
+   1. Let _booleanResult_ be ? _original_.[[SetPrototypeOf]](_V_).
 1. Else,
-   1. Let _trap_ be ToBoolean(? Call(_trap_, _handler_, &laquo; _original_, _V_ &raquo;)).
+   1. Let _booleanResult_ be ToBoolean(? Call(_trap_, _handler_, &laquo; _original_, _V_ &raquo;)).
 1. If _booleanResult_ is *false*, return *false*.
 
 1. Let _extensible_ be ? _O_.[[CommittedIsExtensible]].
-1. If _extensible_ is *true*, return *true*.
-
-1. Let _lastProto_ be ? _O_.[[CommittedGetPrototype]].
-1. If _lastProto_ is not *undefined*, then
-   1. If SameValue(_V_, _lastProto_) is *false*, throw a *TypeError* exception.
+1. If _extensible_ is *false*, then
+   1. Let _committedProto_ be ? _O_.[[CommittedPrototype]].
+   1. If SameValue(_V_, _committedProto_) is *false*, throw a *TypeError* exception.
 
 1. Return *true*.
 
@@ -82,16 +78,14 @@ When the [[IsExtensible]] internal method of a Proxy exotic object _O_ is called
 1. If _extensible_ is *false*
    1. If _booleanResult_ is *true*, throw a *TypeError* exception.
 1. Else, if _booleanResult_ is *false*
-   1. Let _originalIsExtensible_ be ? _original_.[[IsExtensible]]().
-   1. If _originalIsExtensible_ is *true*, throw a *TypeError* exception.
-   1. Else, set _O_.[[CommittedIsExtensible]] to *false*
+   1. TODO: Add all props (public and private) that are not already committed to [[PropsOnOriginalWhenPreventingExtensions]].
+   1. Set _O_.[[CommittedIsExtensible]] to _booleanResult_
 1. Return _booleanResult_.
 
 [[IsExtensible]] for proxy objects enforces the following invariants:
 
 - The result of [[IsExtensible]] is a Boolean value.
 - If [[IsExtensible]] returns false, all future calls to [[IsExtensible]] on the proxy must return false.
-- If [[IsExtensible]] returns false, [[IsExtensible]] applied to the proxy object's original object must return false.
 
 ## [[PreventExtensions]] ( )
 
@@ -109,15 +103,14 @@ When the [[PreventExtensions]] internal method of a Proxy exotic object _O_ is c
    1. Let _booleanResult_ be ToBoolean(? Call(_trap_, _handler_, &laquo; _original_ &raquo;)).
 
 1. If _booleanResult_ is *true*, then
-   1. Let _originalIsExtensible_ be ? _original_.[[IsExtensible]]().
-   1. If _originalIsExtensible_ is *true*, throw a *TypeError* exception.
-   1. Else, set _O_.[[CommittedIsExtensible]] to *false*
+   1. TODO: Add all props (public and private) that are not already committed to [[PropsOnOriginalWhenPreventingExtensions]].
+   1. Set _O_.[[CommittedIsExtensible]] to *false*
 1. Return _booleanResult_.
 
 [[PreventExtensions]] for proxy objects enforces the following invariants:
 
 - The result of [[PreventExtensions]] is a Boolean value.
-- [[PreventExtensions]] applied to the proxy object only returns *true* if [[IsExtensible]] applied to the proxy object's original object is *false*.
+- If [[PreventExtensions]] returns true, all future calls to [[IsExtensible]] on the proxy must return false.
 
 
 ## [[GetOwnProperty]] ( _P_ )
@@ -135,7 +128,7 @@ When the [[GetOwnProperty]] internal method of a Proxy exotic object _O_ is call
    1. Let _resultObj_ ? _original_.[[GetOwnProperty]](_P_).
 1. Else,
    1. Let _resultObj_ be ? Call(_trap_, _handler_, &laquo; _original_, _P_ &raquo;).
-1. If Type(_resultObj_) is neither Object nor Undefined, throw a *TypeError* exception.
+   1. If Type(_resultObj_) is neither Object nor Undefined, throw a *TypeError* exception.
 
 1. Let _committedDesc_ be the value associated with the key _P_ in _O_.[[CommittedProperties]].
 1. If _resultObj_ is *undefined*, then
@@ -144,11 +137,14 @@ When the [[GetOwnProperty]] internal method of a Proxy exotic object _O_ is call
    1. If _committedDesc_.[[Configurable]] is *false*, throw a *TypeError* exception.
 
    1. Let _extensible_ be _O_.[[CommittedIsExtensible]]
+   1. TODO: If not extensible and exists in [[ProxyOriginal]], commit it as non-existent
    1. If _extensible_ is *false*, throw a *TypeError* exception.
 
    1. Return *undefined*.
 
 1. Let _extensible_ be _O_.[[CommittedIsExtensible]]
+1. If _extensible__ is *false* and _committedDesc_ is *undefined*, then
+   1.  TODO: If exists in [[PropsOnOriginalWhenPreventingExtensions]], setup default desc
 1. Let _resultDesc_ be ? ToPropertyDescriptor(_resultObj_).
 1. Call CompletePropertyDescriptor(_resultDesc_).
 
@@ -190,6 +186,7 @@ When the [[DefineOwnProperty]] internal method of a Proxy exotic object _O_ is c
 1. Let _extensible_ be _O_.[[CommittedIsExtensible]]
 1. Let _committedDesc_ be the value associated with the key _P_ in _O_.[[CommittedProperties]].
 1. If _committedDesc_ is *undefined*, then
+   1. TODO: if not extensible and exists in [[PropsOnOriginalWhenPreventingExtensions]], allow
    1. If _extensible_ is *false*, throw a *TypeError* exception.
 1. Else _committedDesc_ is not *undefined*,
    1. If IsCompatiblePropertyDescriptor(_extensible_, _Desc_, _committedDesc_) is *false*, throw a *TypeError* exception.
@@ -234,7 +231,7 @@ When the [[HasProperty]] internal method of a Proxy exotic object _O_ is called 
 
 - The result of [[HasProperty]] is a Boolean value.
 - A property cannot be reported as non-existent, if it has previously been observed as a non-configurable property of the proxy.
-- A property cannot be reported as non-existent, if it has previously been observed as a property of the proxy and the proxy object is not extensible.
+- A property cannot be reported as non-existent, if it has previously been observed as a property of the proxy and the proxy is not extensible.
 
 ## [[Get]] ( _P_, _Receiver_ )
 
@@ -316,9 +313,10 @@ When the [[Delete]] internal method of a Proxy exotic object _O_ is called with 
 1. If _booleanResult_ is *false*, return *false*.
 
 1. Let _committedDesc_ be the value associated with the key _P_ in _O_.[[CommittedProperties]].
-1. If _committedDesc_ is not *undefined* and _committedDesc_.[[Configurable]] is *false*, throw a *TypeError* exception.
+1. If _committedDesc_ is not *undefined*, then
+   1. _committedDesc_.[[Configurable]] is *false*, throw a *TypeError* exception.
+   1. Delete the key _P_ from _O_.[[CommittedProperties]].
 
-1. Delete the key _P_ from _O_.[[CommittedProperties]].
 1. Return *true*.
 
 [[Delete]] for proxy objects enforces the following invariants:
@@ -370,8 +368,9 @@ When the [[OwnPropertyKeys]] internal method of a Proxy exotic object _O_ is cal
 1. For each _key_ that is an element of _configurableKeys_, do
    1. If _key_ is not an element of _uncheckedResultKeys_, throw a *TypeError* exception.
    1. Remove _key_ from _uncheckedResultKeys_.
-1. If _uncheckedResultKeys_ is not empty, throw a *TypeError* exception.
 
+1. TODO: For each _key_ in _uncheckedResultKeys_ that is public and is in [[PropsOnOriginalWhenPreventingExtensions]], remove it from both
+1. If _uncheckedResultKeys_ is not empty, throw a *TypeError* exception.
 1. Return _result_.
 
 [[OwnPropertyKeys]] for proxy objects enforces the following invariants:
